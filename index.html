@@ -26,7 +26,7 @@
 
       async function compMove(fen) {
         try {
-          return await(await fetch(`http://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(fen)}`)).text();
+          return await(await fetch(`https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(fen)}`)).text();
         } catch(error) {
           console.error("Error fetching data from Chess Cloud Database API", error);
         }
