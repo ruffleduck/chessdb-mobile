@@ -11,6 +11,7 @@
   <style>
     #board {
       width: 50vw;
+      height: 50vw;
     }
   </style>
 </head>
@@ -97,13 +98,24 @@
         }
       }
 
-      const board = Chessboard("board", {
+      let board = Chessboard("board", {
         draggable: true,
         position: "start",
         onDrop: onDrop,
         onSnapEnd: () => { board.position(game.fen()); },
         onMouseoverSquare: highlight,
         onMouseoutSquare: cleanBoard
+      });
+      $(window).resize(() => {
+        board.destroy();
+        board = Chessboard("board", {
+          draggable: true,
+          position: game.fen(),
+          onDrop: onDrop,
+          onSnapEnd: () => { board.position(game.fen()); },
+          onMouseoverSquare: highlight,
+          onMouseoutSquare: cleanBoard
+        });
       });
       getQueryInfo();
     });
