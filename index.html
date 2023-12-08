@@ -18,74 +18,90 @@
   <div id="board"></div>
   <h1 id="eval"></h1>
   <script>
-    $(document).ready(function() {
-      var $board = $("#board");
-      var whiteSquareGrey = "#a9a9a9";
-      var blackSquareGrey = "#696969";
-      var game = new Chess();
+    $(() => {
+      const $board = $("#board");
+      let game = new Chess();
+      let queryInfo;
 
-      async function compMove(fen) {
-        try {
-          return await(await fetch(`https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(fen)}`)).text();
-        } catch(error) {
-          console.error("Error fetching data from Chess Cloud Database API", error);
-        }
+      async function getQueryInfo() {
+        queryInfo = [];
+        const queryurl = `https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(game.fen())}`;
+        (await (await fetch(queryurl)).text()).split("|").map(move => {
+          const moveStartIndex = move.indexOf("move:") + 5;
+          const moveEndIndex = move.indexOf(",", moveStartIndex);
+          let moveInfo = { move: move.substring(moveStartIndex, moveEndIndex) };
+          move.substring(moveEndIndex + 1).split(",").forEach(item => {
+            const [key, value] = item.split(":");
+            moveInfo[key] = key === "note" ? value.trim() : parseInt(value, 10);
+          });
+          queryInfo.push(moveInfo);
+        });
       }
 
-      function removeGreySquares() {
+      /* White squares: .white-1e1d7
+         Black squares: .black-3c85d
+         All squares: .square-55d63 */
+
+      function greySquare(square) {
+        const $square = $("#board .square-" + square);
+        $square.css("background", $square.hasClass("black-3c85d") ? "#696969" : "#a9a9a9");
+      }
+
+      function redSquare(square) {
+        const $square = $("#board .square-" + square);
+        $square.css("background", $square.hasClass("black-3c85d") ? "#aa5555" : "#bb6767");
+      }
+
+      function greenSquare(square) {
+        const $square = $("#board .square-" + square);
+        $square.css("background", $square.hasClass("black-3c85d") ? "#55aa55" : "#67bb67");
+      }
+
+      function blueSquare(square) {
+        const $square = $("#board .square-" + square);
+        $square.css("background", $square.hasClass("black-3c85d") ? "#5555aa" : "#6767bb");
+      }
+
+      function cleanBoard() {
         $("#board .square-55d63").css("background", "");
       }
 
-      function greySquare(square) {
-        /* White squares: .white-1e1d7
-           Black squares: .black-3c85d
-           All squares: .square-55d63 */
-        var $square = $("#board .square-" + square);
-        $square.css("background", $square.hasClass("black-3c85d") ? blackSquareGrey : whiteSquareGrey);
+      async function onDrop(source, target) {
+        cleanBoard();
+        if(game.move({from: source, to: target, promotion: "q"}) === null)
+          return "snapback";
+        await getQueryInfo();
       }
 
-      function onDragStart(source, piece) {
-        if(game.game_over() || (game.turn() === "w" && piece.search(/^b/) !== -1) || (game.turn() === "b" && piece.search(/^w/) !== -1)) return false;
+      function highlight(square, piece) {
+        for(let i = 0; i < queryInfo.length; i++) {
+          let move = queryInfo[i].move;
+          if(move.substring(0, 2) === square) {
+            greySquare(square);
+            switch(queryInfo[i].note[0]) {
+              case "?":
+                redSquare(move.substring(2, 4));
+                break;
+              case "*":
+                greenSquare(move.substring(2, 4));
+                break;
+              case "!":
+                blueSquare(move.substring(2, 4));
+                break;
+            }
+          }
+        }
       }
 
-      function onDrop(source, target) {
-        removeGreySquares();
-        if(game.move({from: source, to: target, promotion: "q"}) === null) return "snapback";
-      }
-
-      function onMouseoverSquare(square, piece) {
-        var moves = game.moves({
-          square: square,
-          verbose: true
-        });
-        if(moves.length === 0) return;
-        greySquare(square);
-        for(var i = 0; i < moves.length; i++) greySquare(moves[i].to);
-      }
-
-      function onMouseoutSquare(square, piece) {
-        removeGreySquares();
-      }
-
-      function onSnapEnd() {
-        board.position(game.fen());
-        compMove(game.fen()).then(function(result) {
-          $("#eval").text("eval: " + -/score:([-+]?\d+)/.exec(result)[1]);
-          var move = /move:([a-h][1-8][a-h][1-8])/.exec(result)[1];
-          game.move({from: move.substring(0, 2), to: move.substring(2, 4), promotion: "q"});
-          board.position(game.fen());
-        });
-      }
-
-      var board = Chessboard("board", {
+      const board = Chessboard("board", {
         draggable: true,
         position: "start",
-        onDragStart: onDragStart,
         onDrop: onDrop,
-        onMouseoutSquare: onMouseoutSquare,
-        onMouseoverSquare: onMouseoverSquare,
-        onSnapEnd: onSnapEnd
+        onSnapEnd: () => { board.position(game.fen()); },
+        onMouseoverSquare: highlight,
+        onMouseoutSquare: cleanBoard
       });
+      getQueryInfo();
     });
   </script>
 </body>
