@@ -5,54 +5,91 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Opening Library</title>
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Signika+Negative:400,700">
   <style>
-    #board-movelist {
+    * {
+      font-family: 'Signika Negative', sans-serif;
+    }
+    #container {
       display: flex;
+      height: 43vw;
     }
     #board {
       flex: 1;
       touch-action: none;
     }
-    #movelist {
-      width: 50vw;
-      font-size: 1.5vw;
-      max-height: 40vw;
-      overflow-y: auto;
-      margin-left: 1vw;
+    .move-list-container {
+      display: flex;
+      flex-direction: column;
+      margin-left: 2vw;
+      max-height: 43vw;
+      border: 1px solid #000;
     }
-    #metadata {
-      white-space: nowrap;
-      font-size: 0;
-    }
-    #eval {
-      display: inline-block;
+    .move-list-container h2 {
       font-size: 2vw;
+      text-align: center;
+    }
+    .move-list {
+      width: 25vw;
+      font-size: 1.5vw;
+      overflow-y: auto;
+      padding-left: 0.7vw;
+    }
+    #metadata-container {
+      white-space: nowrap;
+      font-size: 1.5vw;
+    }
+    .metadata {
+      display: inline-block;
       margin-right: 2vw;
     }
-    #request {
-      display: inline-block;
-      font-size: 1.5vw;
+    footer {
+      text-align: center;
+      padding: 5px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
     }
   </style>
 </head>
 <body>
-  <div id="board-movelist">
+  <div id="container">
     <div id="board"></div>
-    <div id="movelist"></div>
+    <div class="move-list-container">
+      <h2>Opening Library</h2>
+      <div id="move-list" class="move-list"></div>
+    </div>
+    <div class="move-list-container">
+      <h2>Chess Cloud Database</h2>
+      <div id="query-info" class="move-list"></div>
+    </div>
   </div>
-  <div id="metadata">
-    <h2 id="eval"></h2>
-    <p id="request"></p>
+  <div id="metadata-container">
+    <h2 id="eval" class="metadata" style="font-size: 2vw;"></h2>
+    <a id="lichess-analysis" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
+    <p id="request" class="metadata"></p>
   </div>
+  <footer>
+    <p>Created by Alexander Davison</p>
+  </footer>
   <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js" integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous"></script>
   <script>
     $(() => {
       const $board = $("#board");
-      const $movelist = $("#movelist");
-      let game = new Chess();
+      const $moveList = $("#move-list");
+      const $queryInfo = $("#query-info");
+      const $lichessAnalysis = $("#lichess-analysis");
+      const game = new Chess();
       let queryInfo;
+
+      function convertEval(e) {
+        if(isNaN(e))
+          return "unknown"
+        const evaluation = (e / 100 * (game.turn() === "b" ? -1 : 1)).toFixed(2);
+        return ((evaluation < 0) ? "" : "+") + evaluation;
+      }
 
       async function getQueryInfo() {
         $("#request").text("Requesting...");
@@ -68,11 +105,15 @@
           });
           queryInfo.push(moveInfo);
         });
-        let evaluation = (queryInfo[0].score / 100 * (game.turn() === "b" ? -1 : 1)).toFixed(2);
-        if(isNaN(evaluation))
-          $("#eval").text("eval: unknown");
-        else $("#eval").text("eval: " + ((evaluation < 0) ? "" : "+") + evaluation);
+        $("#eval").text("eval: " + convertEval(queryInfo[0].score));
         $("#request").text("");
+        $queryInfo.text("");
+        for(let i = 0; i < queryInfo.length; i++) {
+          const tempGame = new Chess();
+          tempGame.load(game.fen())
+          tempGame.move({from: queryInfo[i].move.substring(0, 2), to: queryInfo[i].move.substring(2, 4)});
+          $queryInfo.append(`<p>${tempGame.history()[tempGame.history().length - 1]}${queryInfo[i].note[0]} (${convertEval(queryInfo[i].score)})</p>`);
+        }
       }
 
       function greySquare(square) {
@@ -103,21 +144,22 @@
         cleanBoard();
         if(game.move({from: source, to: target, promotion: "q"}) === null)
           return "snapback";
-        await getQueryInfo();
-        let moveHistory = game.history();
-        $movelist.text("");
+        $moveList.text("");
+        const moveHistory = game.history();
         for(let i = 0; i < moveHistory.length; i += 2)
-          $movelist.append(`<h2>${Math.ceil((i + 1) / 2)}. ${moveHistory[i]} ${(i + 1) < moveHistory.length ? moveHistory[i + 1] : ""}</h2>`);
-        $movelist.scrollTop($movelist.prop("scrollHeight"));
+          $moveList.append(`<p>${Math.ceil((i + 1) / 2)}. ${moveHistory[i]} ${(i + 1) < moveHistory.length ? moveHistory[i + 1] : ""}</p>`);
+        $moveList.scrollTop($moveList.prop("scrollHeight"));
+        $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
+        await getQueryInfo();
       }
 
       function highlight(square, piece) {
-        let moves = game.moves({square: square, verbose: true});
+        const moves = game.moves({square: square, verbose: true});
         if(moves.length > 0) greySquare(square);
         for(let i = 0; i < moves.length; i++)
           greySquare(moves[i].to);
         for(let i = 0; i < queryInfo.length; i++) {
-          let move = queryInfo[i].move;
+          const move = queryInfo[i].move;
           if(move.substring(0, 2) === square) {
             switch(queryInfo[i].note[0]) {
               case "?":
@@ -150,6 +192,7 @@
         board = Chessboard("board", boardConfig);
       });
       $("#eval").text("eval: +0.00");
+      $lichessAnalysis.text("lichess analysis");
       getQueryInfo();
     });
   </script>
