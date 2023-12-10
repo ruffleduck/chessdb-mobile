@@ -8,7 +8,12 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Signika+Negative:400,700">
   <style>
     * {
-      font-family: 'Signika Negative', sans-serif;
+      font-family: "Signika Negative", sans-serif;
+    }
+    h1 {
+      font-size: 3vw;
+      font-style: italic;
+      margin: 1vw;
     }
     #container {
       display: flex;
@@ -35,6 +40,9 @@
       overflow-y: auto;
       padding-left: 0.7vw;
     }
+    #queryinfo {
+      text-align: center;
+    }
     #metadata-container {
       white-space: nowrap;
       font-size: 1.5vw;
@@ -53,14 +61,15 @@
   </style>
 </head>
 <body>
+  <h1>Opening Library</h1>
   <div id="container">
     <div id="board"></div>
     <div class="move-list-container">
-      <h2>Opening Library</h2>
+      <h2>Move List</h2>
       <div id="move-list" class="move-list"></div>
     </div>
     <div class="move-list-container">
-      <h2>Chess Cloud Database</h2>
+      <h2><a href="https://www.chessdb.cn/queryc_en/">CDB</a> Query Info</h2>
       <div id="query-info" class="move-list"></div>
     </div>
   </div>
@@ -91,7 +100,7 @@
         return ((evaluation < 0) ? "" : "+") + evaluation;
       }
 
-      async function getQueryInfo() {
+      async function onBoardUpdate() {
         $("#request").text("Requesting...");
         queryInfo = [];
         const queryurl = `https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(game.fen())}`;
@@ -107,83 +116,41 @@
         });
         $("#eval").text("eval: " + convertEval(queryInfo[0].score));
         $("#request").text("");
+
         $queryInfo.text("");
         for(let i = 0; i < queryInfo.length; i++) {
           const tempGame = new Chess();
-          tempGame.load(game.fen())
+          tempGame.load(game.fen());
           tempGame.move({from: queryInfo[i].move.substring(0, 2), to: queryInfo[i].move.substring(2, 4)});
-          $queryInfo.append(`<p>${tempGame.history()[tempGame.history().length - 1]}${queryInfo[i].note[0]} (${convertEval(queryInfo[i].score)})</p>`);
+          let move = tempGame.history()[tempGame.history().length - 1];
+          if(move !== undefined)
+            $queryInfo.append(`<p>${move}${queryInfo[i].note[0]} (${convertEval(queryInfo[i].score)})</p>`);
         }
-      }
 
-      function greySquare(square) {
-        const $square = $("#board .square-" + square);
-        $square.css("background", $square.hasClass("black-3c85d") ? "#696969" : "#a9a9a9");
-      }
-
-      function redSquare(square) {
-        const $square = $("#board .square-" + square);
-        $square.css("background", $square.hasClass("black-3c85d") ? "#bb6969" : "#dd8888");
-      }
-
-      function greenSquare(square) {
-        const $square = $("#board .square-" + square);
-        $square.css("background", $square.hasClass("black-3c85d") ? "#69bb69" : "#88dd88");
-      }
-
-      function blueSquare(square) {
-        const $square = $("#board .square-" + square);
-        $square.css("background", $square.hasClass("black-3c85d") ? "#6969bb" : "#8888dd");
-      }
-
-      function cleanBoard() {
-        $("#board .square-55d63").css("background", "");
-      }
-
-      async function onDrop(source, target) {
-        cleanBoard();
-        if(game.move({from: source, to: target, promotion: "q"}) === null)
-          return "snapback";
         $moveList.text("");
         const moveHistory = game.history();
         for(let i = 0; i < moveHistory.length; i += 2)
           $moveList.append(`<p>${Math.ceil((i + 1) / 2)}. ${moveHistory[i]} ${(i + 1) < moveHistory.length ? moveHistory[i + 1] : ""}</p>`);
         $moveList.scrollTop($moveList.prop("scrollHeight"));
-        $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
-        await getQueryInfo();
-      }
 
-      function highlight(square, piece) {
-        const moves = game.moves({square: square, verbose: true});
-        if(moves.length > 0) greySquare(square);
-        for(let i = 0; i < moves.length; i++)
-          greySquare(moves[i].to);
-        for(let i = 0; i < queryInfo.length; i++) {
-          const move = queryInfo[i].move;
-          if(move.substring(0, 2) === square) {
-            switch(queryInfo[i].note[0]) {
-              case "?":
-                redSquare(move.substring(2, 4));
-                break;
-              case "*":
-                greenSquare(move.substring(2, 4));
-                break;
-              case "!":
-                blueSquare(move.substring(2, 4));
-                break;
-            }
-          }
-        }
+        $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
       }
 
       let boardConfig = {
         draggable: true,
         showNotation: false,
         position: "start",
-        onDrop: onDrop,
-        onSnapEnd: () => { board.position(game.fen()); },
-        onMouseoverSquare: highlight,
-        onMouseoutSquare: cleanBoard
+        moveSpeed: 15,
+        snapbackSpeed: 0,
+        snapSpeed: 0,
+        onDrop: async function(source, target) {
+          if(game.move({from: source, to: target, promotion: "q"}) === null)
+            return "snapback";
+          await onBoardUpdate();
+        },
+        onSnapEnd: () => {
+          board.position(game.fen());
+        }
       };
       let board = Chessboard("board", boardConfig);
       $(window).resize(() => {
@@ -191,9 +158,18 @@
         boardConfig.position = game.fen();
         board = Chessboard("board", boardConfig);
       });
+      $(document).keydown(e => {
+        if(event.key === "z") {
+          game.undo();
+          board.position(game.fen());
+          onBoardUpdate();
+        } else if(event.key === "f") {
+          board.flip();
+        }
+      });
       $("#eval").text("eval: +0.00");
       $lichessAnalysis.text("lichess analysis");
-      getQueryInfo();
+      onBoardUpdate();
     });
   </script>
 </body>
