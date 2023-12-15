@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Opening Library</title>
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Signika+Negative:400,700">
+  <title>Opening Library</title>
   <style>
     * {
       font-family: "Signika Negative", sans-serif;
@@ -69,17 +69,17 @@
       <div id="move-list" class="move-list"></div>
     </div>
     <div class="move-list-container">
-      <h2><a href="https://www.chessdb.cn/queryc_en/">CDB</a> Query Info</h2>
+      <h2>Query Info</h2>
       <div id="query-info" class="move-list"></div>
     </div>
   </div>
   <div id="metadata-container">
     <h2 id="eval" class="metadata" style="font-size: 2vw;"></h2>
     <a id="lichess-analysis" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
-    <p id="request-or-winrate" class="metadata"></p>
+    <p id="status-display" class="metadata"></p>
   </div>
   <footer>
-    <p>Created by Alexander Davison</p>
+    <p>Created by Alexander Davison | Powered by <a href="https://www.chessdb.cn/queryc_en/">CDB</a></p>
   </footer>
   <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -89,7 +89,7 @@
       const $board = $("#board");
       const $moveList = $("#move-list");
       const $queryInfo = $("#query-info");
-      const $requestOrWinrate = $("#request-or-winrate");
+      const $statusDisplay = $("#status-display");
       const $eval = $("#eval");
       const $lichessAnalysis = $("#lichess-analysis");
       const game = new Chess();
@@ -104,6 +104,16 @@
         return ((evaluation < 0) ? "" : "+") + evaluation.toFixed(2);
       }
 
+      function formatNumber(num) {
+        if (num >= 1000000) {
+          return (num / 1000000).toFixed(1) + 'M';
+        } else if (num >= 1000) {
+          return (num / 1000).toFixed(1) + 'K';
+        } else {
+          return num.toString();
+        }
+      }
+
       async function onBoardUpdate() {
         $moveList.text("");
         const moveHistory = game.history();
@@ -113,7 +123,7 @@
 
         $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
 
-        $requestOrWinrate.text("Requesting...");
+        $statusDisplay.text("Requesting...");
         queryInfo = [];
         (await (await fetch(`https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(game.fen())}`)).text())
         .split("|").map(move => {
@@ -132,8 +142,8 @@
         let white = explorerInfo.white;
         let draws = explorerInfo.draws;
         let total = white + draws + explorerInfo.black;
-        let winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(2);
-        $requestOrWinrate.text(isNaN(winrate) ? "winrate: n/a" : `winrate: ${winrate}%`);
+        let winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(1);
+        $statusDisplay.text(isNaN(winrate) ? "n/a" : `${winrate}% winrate, ${formatNumber(total)} games`);
 
         $queryInfo.text("");
         for(let i = 0; i < queryInfo.length; i++) {
@@ -143,17 +153,19 @@
           let move = tempGame.history()[tempGame.history().length - 1];
           if(move !== undefined) {
             winrate = NaN;
+            total = NaN;
             for(let j = 0; j < explorerInfo.moves.length; j++) {
               if(explorerInfo.moves[j].san === move) {
                 white = explorerInfo.moves[j].white;
                 draws = explorerInfo.moves[j].draws;
                 total = white + draws + explorerInfo.moves[j].black;
-                winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(2);
+                winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(1);
+                break;
               }
             }
             $queryInfo.append(`<p>${move}${queryInfo[i].note[0]}
               (${convertEval(queryInfo[i].score, game.turn())},
-               ${isNaN(winrate) ? "n/a" : winrate + "%"})</p>`);
+               ${isNaN(winrate) ? "n/a" : `${winrate}%, `}${isNaN(total) ? "" : `${formatNumber(total)}`})</p>`);
           }
         }
       }
