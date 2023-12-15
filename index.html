@@ -8,49 +8,75 @@
   <title>Opening Library</title>
   <style>
     * {
+      box-sizing: border-box;
       font-family: "Signika Negative", sans-serif;
     }
+
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
     h1 {
       font-size: 3vw;
       font-style: italic;
-      margin: 1vw;
+      margin: 0.5vw;
     }
+
     #container {
       display: flex;
-      height: 43vw;
     }
+
     #board {
-      flex: 1;
+      width: 40%;
       touch-action: none;
+      box-sizing: content-box;
+      margin-left: 0.5vw;
     }
+
     .move-list-container {
+      flex: 1;
+      margin-left: 2vw;
       display: flex;
       flex-direction: column;
-      margin-left: 2vw;
-      max-height: 43vw;
-      border: 1px solid #000;
+      overflow-y: auto;
+      max-height: 40vw;
     }
-    .move-list-container h2 {
-      font-size: 2vw;
-      text-align: center;
-    }
+
     .move-list {
       width: 25vw;
       font-size: 1.5vw;
-      overflow-y: auto;
       padding-left: 0.7vw;
+      overflow-y: auto;
     }
+
+    #sort-options {
+      display: flex;
+      margin-top: 5px;
+    }
+
+    #sort-options select {
+      margin: 0.5vw;
+      padding: 0;
+      font-size: 1vw;
+    }
+
     #queryinfo {
       text-align: center;
     }
+
     #metadata-container {
+      flex: 1;
       white-space: nowrap;
-      font-size: 1.5vw;
+      font-size: 1.3vw;
+      margin-left: 0.5vw;
     }
+
     .metadata {
       display: inline-block;
       margin-right: 2vw;
     }
+
     footer {
       text-align: center;
       padding: 5px;
@@ -58,19 +84,44 @@
       bottom: 0;
       width: 100%;
     }
+
+    @media (max-width: 600px) {
+      #board {
+        width: 90%;
+        margin: 0 5%;
+      }
+      #metadata-container {
+        justify-content: center;
+      }
+      .move-list-container {
+        visibility: hidden;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>Opening Library</h1>
   <div id="container">
     <div id="board"></div>
-    <div class="move-list-container">
-      <h2>Move List</h2>
-      <div id="move-list" class="move-list"></div>
+    <div class="move-list-container" style="border-right: 1px solid #000;">
+      <div id="sort-options">
+        <select id="white-sort-options">
+          <option value="" disabled>Sort White's moves by...</option>
+          <option value="accuracy" selected>accuracy</option>
+          <option value="popularity">popularity</option>
+          <option value="winrate">winrate</option>
+        </select>
+        <select id="black-sort-options">
+          <option value="" disabled>Sort Black's moves by...</option>
+          <option value="accuracy" selected>accuracy</option>
+          <option value="popularity">popularity</option>
+          <option value="winrate">winrate</option>
+        </select>
+      </div>
+      <div id="query-info" class="move-list"></div>
     </div>
     <div class="move-list-container">
-      <h2>Query Info</h2>
-      <div id="query-info" class="move-list"></div>
+      <div id="move-list" class="move-list"></div>
     </div>
   </div>
   <div id="metadata-container">
@@ -87,11 +138,14 @@
   <script>
     $(() => {
       const $board = $("#board");
+      const $eval = $("#eval");
+      const $lichessAnalysis = $("#lichess-analysis");
       const $moveList = $("#move-list");
       const $queryInfo = $("#query-info");
       const $statusDisplay = $("#status-display");
-      const $eval = $("#eval");
-      const $lichessAnalysis = $("#lichess-analysis");
+      const $whiteSortOptions = $("#white-sort-options");
+      const $blackSortOptions = $("#black-sort-options");
+      
       const game = new Chess();
       let queryInfo;
 
@@ -106,12 +160,52 @@
 
       function formatNumber(num) {
         if (num >= 1000000) {
-          return (num / 1000000).toFixed(1) + 'M';
+          return (num / 1000000).toFixed(1) + "M";
         } else if (num >= 1000) {
-          return (num / 1000).toFixed(1) + 'K';
+          return (num / 1000).toFixed(1) + "K";
         } else {
           return num.toString();
         }
+      }
+
+      function queryInfoDisplay() {
+        if(queryInfo === undefined)
+          return;
+        $queryInfo.text("");
+        queryInfo.sort((a, b) => {
+          let aComparisonValue;
+          let bComparisonValue;
+          switch(game.turn() === "w" ? $whiteSortOptions.val() : $blackSortOptions.val()) {
+            case "accuracy":
+              aComparisonValue = a.score;
+              bComparisonValue = b.score;
+              break;
+            case "popularity":
+              aComparisonValue = a.total;
+              bComparisonValue = b.total;
+              break;
+            case "winrate":
+              aComparisonValue = a.winrate;
+              bComparisonValue = b.winrate;
+              break;
+          }
+          if(isNaN(aComparisonValue) && isNaN(bComparisonValue))
+            return 1;
+          if(isNaN(aComparisonValue))
+            return 1;
+          if(isNaN(bComparisonValue))
+            return -1;
+          if(aComparisonValue === bComparisonValue)
+            return b.total - a.total;
+          if(game.turn() === "b" && $blackSortOptions.val() === "winrate")
+            return aComparisonValue - bComparisonValue;
+          return bComparisonValue - aComparisonValue;
+        });
+
+        for(let i = 0; i < queryInfo.length; i++)
+          $queryInfo.append(`<p>${queryInfo[i].moveSan}${queryInfo[i].note[0]}
+              (${convertEval(queryInfo[i].score, game.turn())},
+               ${isNaN(queryInfo[i].winrate) ? "n/a" : `${queryInfo[i].winrate}%, `}${isNaN(queryInfo[i].total) ? "" : `${formatNumber(queryInfo[i].total)}`})</p>`);
       }
 
       async function onBoardUpdate() {
@@ -145,17 +239,16 @@
         let winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(1);
         $statusDisplay.text(isNaN(winrate) ? "n/a" : `${winrate}% winrate, ${formatNumber(total)} games`);
 
-        $queryInfo.text("");
         for(let i = 0; i < queryInfo.length; i++) {
           const tempGame = new Chess();
           tempGame.load(game.fen());
           tempGame.move({from: queryInfo[i].move.substring(0, 2), to: queryInfo[i].move.substring(2, 4)});
-          let move = tempGame.history()[tempGame.history().length - 1];
-          if(move !== undefined) {
-            winrate = NaN;
-            total = NaN;
+          const moveSan = tempGame.history()[tempGame.history().length - 1];
+          winrate = NaN;
+          total = NaN;
+          if(moveSan !== undefined) {
             for(let j = 0; j < explorerInfo.moves.length; j++) {
-              if(explorerInfo.moves[j].san === move) {
+              if(explorerInfo.moves[j].san === moveSan) {
                 white = explorerInfo.moves[j].white;
                 draws = explorerInfo.moves[j].draws;
                 total = white + draws + explorerInfo.moves[j].black;
@@ -163,14 +256,16 @@
                 break;
               }
             }
-            $queryInfo.append(`<p>${move}${queryInfo[i].note[0]}
-              (${convertEval(queryInfo[i].score, game.turn())},
-               ${isNaN(winrate) ? "n/a" : `${winrate}%, `}${isNaN(total) ? "" : `${formatNumber(total)}`})</p>`);
           }
+          queryInfo[i].total = total;
+          queryInfo[i].winrate = winrate;
+          queryInfo[i].moveSan = moveSan;
         }
+
+        queryInfoDisplay();
       }
 
-      let boardConfig = {
+      const board = Chessboard("board", {
         draggable: true,
         showNotation: false,
         position: "start",
@@ -185,13 +280,9 @@
         onSnapEnd: () => {
           board.position(game.fen());
         }
-      };
-      let board = Chessboard("board", boardConfig);
-      $(window).resize(() => {
-        board.destroy();
-        boardConfig.position = game.fen();
-        board = Chessboard("board", boardConfig);
       });
+      $(window).resize(board.resize);
+
       $(document).keydown(e => {
         // change space to right arrow and z to left arrow, add implementation of random best move
         if(event.key === "z") {
@@ -208,6 +299,10 @@
           } catch(TypeError) {}
         }
       });
+
+      $whiteSortOptions.on("change", queryInfoDisplay);
+      $blackSortOptions.on("change", queryInfoDisplay);
+
       $eval.text("eval: +0.00");
       $lichessAnalysis.text("lichess analysis");
       onBoardUpdate();
