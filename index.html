@@ -76,8 +76,7 @@
   <div id="metadata-container">
     <h2 id="eval" class="metadata" style="font-size: 2vw;"></h2>
     <a id="lichess-analysis" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
-    <p id="winrates" class="metadata"></p>
-    <p id="request" class="metadata"></p>
+    <p id="request-or-winrate" class="metadata"></p>
   </div>
   <footer>
     <p>Created by Alexander Davison</p>
@@ -90,10 +89,9 @@
       const $board = $("#board");
       const $moveList = $("#move-list");
       const $queryInfo = $("#query-info");
-      const $request = $("#request");
+      const $requestOrWinrate = $("#request-or-winrate");
       const $eval = $("#eval");
       const $lichessAnalysis = $("#lichess-analysis");
-      const $wRate = $("#winrates");
       const game = new Chess();
       let queryInfo;
 
@@ -115,7 +113,7 @@
 
         $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
 
-        $request.text("Requesting...");
+        $requestOrWinrate.text("Requesting...");
         queryInfo = [];
         (await (await fetch(`https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(game.fen())}`)).text())
         .split("|").map(move => {
@@ -129,7 +127,13 @@
           queryInfo.push(moveInfo);
         });
         $eval.text("eval: " + convertEval(queryInfo[0].score, game.turn()));
-        $request.text("");
+
+        const explorerInfo = await(await fetch(`https://explorer.lichess.ovh/masters?fen=${encodeURIComponent(game.fen())}`)).json();
+        let white = explorerInfo.white;
+        let draws = explorerInfo.draws;
+        let total = white + draws + explorerInfo.black;
+        let winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(2);
+        $requestOrWinrate.text(isNaN(winrate) ? "winrate: n/a" : `winrate: ${winrate}%`);
 
         $queryInfo.text("");
         for(let i = 0; i < queryInfo.length; i++) {
@@ -137,16 +141,21 @@
           tempGame.load(game.fen());
           tempGame.move({from: queryInfo[i].move.substring(0, 2), to: queryInfo[i].move.substring(2, 4)});
           let move = tempGame.history()[tempGame.history().length - 1];
-          if(move !== undefined)
-            $queryInfo.append(`<p>${move}${queryInfo[i].note[0]} (${convertEval(queryInfo[i].score, game.turn())})</p>`);
+          if(move !== undefined) {
+            winrate = NaN;
+            for(let j = 0; j < explorerInfo.moves.length; j++) {
+              if(explorerInfo.moves[j].san === move) {
+                white = explorerInfo.moves[j].white;
+                draws = explorerInfo.moves[j].draws;
+                total = white + draws + explorerInfo.moves[j].black;
+                winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(2);
+              }
+            }
+            $queryInfo.append(`<p>${move}${queryInfo[i].note[0]}
+              (${convertEval(queryInfo[i].score, game.turn())},
+               ${isNaN(winrate) ? "n/a" : winrate + "%"})</p>`);
+          }
         }
-
-        const explorerInfo = await (await fetch(`https://explorer.lichess.ovh/masters?fen=${encodeURIComponent(game.fen())}`)).json();
-        const white = explorerInfo.white;
-        const draws = explorerInfo.draws;
-        const black = explorerInfo.black;
-        const total = white + draws + black;
-        $wRate.text(`W ${(white / total * 100).toFixed(2)}%, D ${(draws / total * 100).toFixed(2)}%, B ${(black / total * 100).toFixed(2)}%`);
       }
 
       let boardConfig = {
@@ -172,6 +181,7 @@
         board = Chessboard("board", boardConfig);
       });
       $(document).keydown(e => {
+        // change space to right arrow and z to left arrow, add implementation of random best move
         if(event.key === "z") {
           game.undo();
           board.position(game.fen());
