@@ -72,6 +72,10 @@
       margin-left: 0.5vw;
     }
 
+    #eval {
+      font-size: 2vw;
+    }
+
     .metadata {
       display: inline-block;
       margin-right: 2vw;
@@ -86,15 +90,30 @@
     }
 
     @media (max-width: 600px) {
+      h1 {
+        font-size: 6vw;
+        text-align: center;
+      }
+
       #board {
         width: 90%;
         margin: 0 5%;
       }
+
       #metadata-container {
-        justify-content: center;
+        text-align: center;
+        white-space: nowrap;
+        font-size: 3vw;
+        margin: 0 auto; 
+        max-width: 90%;
       }
+
+      #eval {
+        font-size: 4vw;
+      }
+
       .move-list-container {
-        visibility: hidden;
+        display: none;
       }
     }
   </style>
@@ -125,7 +144,7 @@
     </div>
   </div>
   <div id="metadata-container">
-    <h2 id="eval" class="metadata" style="font-size: 2vw;"></h2>
+    <h2 id="eval" class="metadata"></h2>
     <a id="lichess-analysis" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
     <p id="status-display" class="metadata"></p>
   </div>
