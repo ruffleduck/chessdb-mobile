@@ -76,6 +76,7 @@
   <div id="metadata-container">
     <h2 id="eval" class="metadata" style="font-size: 2vw;"></h2>
     <a id="lichess-analysis" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
+    <p id="winrates" class="metadata"></p>
     <p id="request" class="metadata"></p>
   </div>
   <footer>
@@ -89,22 +90,35 @@
       const $board = $("#board");
       const $moveList = $("#move-list");
       const $queryInfo = $("#query-info");
+      const $request = $("#request");
+      const $eval = $("#eval");
       const $lichessAnalysis = $("#lichess-analysis");
+      const $wRate = $("#winrates");
       const game = new Chess();
       let queryInfo;
 
-      function convertEval(e) {
+      function convertEval(e, turn) {
         if(isNaN(e))
           return "unknown"
-        const evaluation = (e / 100 * (game.turn() === "b" ? -1 : 1)).toFixed(2);
-        return ((evaluation < 0) ? "" : "+") + evaluation;
+        let evaluation = e / 100;
+        if(turn === "b")
+          evaluation *= -1;
+        return ((evaluation < 0) ? "" : "+") + evaluation.toFixed(2);
       }
 
       async function onBoardUpdate() {
-        $("#request").text("Requesting...");
+        $moveList.text("");
+        const moveHistory = game.history();
+        for(let i = 0; i < moveHistory.length; i += 2)
+          $moveList.append(`<p>${Math.ceil((i + 1) / 2)}. ${moveHistory[i]} ${(i + 1) < moveHistory.length ? moveHistory[i + 1] : ""}</p>`);
+        $moveList.scrollTop($moveList.prop("scrollHeight"));
+
+        $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
+
+        $request.text("Requesting...");
         queryInfo = [];
-        const queryurl = `https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(game.fen())}`;
-        (await (await fetch(queryurl)).text()).split("|").map(move => {
+        (await (await fetch(`https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(game.fen())}`)).text())
+        .split("|").map(move => {
           const moveStartIndex = move.indexOf("move:") + 5;
           const moveEndIndex = move.indexOf(",", moveStartIndex);
           let moveInfo = { move: move.substring(moveStartIndex, moveEndIndex) };
@@ -114,8 +128,8 @@
           });
           queryInfo.push(moveInfo);
         });
-        $("#eval").text("eval: " + convertEval(queryInfo[0].score));
-        $("#request").text("");
+        $eval.text("eval: " + convertEval(queryInfo[0].score, game.turn()));
+        $request.text("");
 
         $queryInfo.text("");
         for(let i = 0; i < queryInfo.length; i++) {
@@ -124,16 +138,15 @@
           tempGame.move({from: queryInfo[i].move.substring(0, 2), to: queryInfo[i].move.substring(2, 4)});
           let move = tempGame.history()[tempGame.history().length - 1];
           if(move !== undefined)
-            $queryInfo.append(`<p>${move}${queryInfo[i].note[0]} (${convertEval(queryInfo[i].score)})</p>`);
+            $queryInfo.append(`<p>${move}${queryInfo[i].note[0]} (${convertEval(queryInfo[i].score, game.turn())})</p>`);
         }
 
-        $moveList.text("");
-        const moveHistory = game.history();
-        for(let i = 0; i < moveHistory.length; i += 2)
-          $moveList.append(`<p>${Math.ceil((i + 1) / 2)}. ${moveHistory[i]} ${(i + 1) < moveHistory.length ? moveHistory[i + 1] : ""}</p>`);
-        $moveList.scrollTop($moveList.prop("scrollHeight"));
-
-        $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
+        const explorerInfo = await (await fetch(`https://explorer.lichess.ovh/masters?fen=${encodeURIComponent(game.fen())}`)).json();
+        const white = explorerInfo.white;
+        const draws = explorerInfo.draws;
+        const black = explorerInfo.black;
+        const total = white + draws + black;
+        $wRate.text(`W ${(white / total * 100).toFixed(2)}%, D ${(draws / total * 100).toFixed(2)}%, B ${(black / total * 100).toFixed(2)}%`);
       }
 
       let boardConfig = {
@@ -165,9 +178,15 @@
           onBoardUpdate();
         } else if(event.key === "f") {
           board.flip();
+        } else if(event.which === 32) {
+          try {
+            game.move({from: queryInfo[0].move.substring(0, 2), to: queryInfo[0].move.substring(2, 4)});
+            board.position(game.fen());
+            onBoardUpdate();
+          } catch(TypeError) {}
         }
       });
-      $("#eval").text("eval: +0.00");
+      $eval.text("eval: +0.00");
       $lichessAnalysis.text("lichess analysis");
       onBoardUpdate();
     });
