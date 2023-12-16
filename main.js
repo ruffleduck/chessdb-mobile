@@ -180,7 +180,6 @@ $(() => {
       if (event.which === 37) {
         game.undo();
         board.position(game.fen());
-        onBoardUpdate();
       } else if (event.key === "f") {
         board.flip();
       } else if (event.which === 39) {
@@ -191,6 +190,12 @@ $(() => {
         }
       }
     }, 0);
+  });
+
+  $(document).keyup(event => {
+    if (event.which === 37) {
+      onBoardUpdate();
+    };
   });
 
   $eval.text("eval: +0.00");
