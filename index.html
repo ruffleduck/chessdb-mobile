@@ -13,6 +13,8 @@
     }
 
     body {
+      background-color: #fff;
+      color: #000;
       margin: 0;
       padding: 0;
     }
@@ -32,6 +34,14 @@
       touch-action: none;
       box-sizing: content-box;
       margin-left: 0.5vw;
+    }
+
+    .white-1e1d7 {
+      background-color: #fff;
+    }
+
+    .black-3c85d {
+      background-color: #8aa;
     }
 
     .move-list-container {
@@ -54,12 +64,12 @@
       border-right: 1px solid #000;
     }
 
-    #sort-options {
+    .form-container {
       display: flex;
       margin-top: 5px;
     }
 
-    #sort-options select {
+    .form-container select button {
       margin: 0.5vw;
       padding: 0;
       font-size: 1vw;
@@ -84,54 +94,6 @@
       display: inline-block;
       margin-right: 1vw;
     }
-
-    footer {
-      text-align: center;
-      padding: 5px;
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      font-size: 1.2em;
-    }
-
-    @media (max-width: 600px) {
-      h1 {
-        font-size: 6vw;
-        text-align: center;
-      }
-
-      #board {
-        width: 50%;
-        margin: 0 5%;
-      }
-
-      #query-info-container {
-        border-right: 0;
-      }
-
-      #metadata-container {
-        white-space: nowrap;
-        font-size: 3vw;
-        margin: 0 auto; 
-        max-width: 90%;
-      }
-
-      #eval {
-        font-size: 3vw;
-      }
-
-      #lichess-analysis {
-        display: none;
-      }
-
-      .move-list {
-        font-size: 2vw;
-      }
-
-      footer {
-        font-size: 2vw;
-      }
-    }
   </style>
 </head>
 <body>
@@ -139,7 +101,7 @@
   <div id="container">
     <div id="board"></div>
     <div id="query-info-container" class="move-list-container">
-      <div id="sort-options">
+      <div class="form-container">
         <select id="white-sort-options">
           <option value="" disabled>Sort White's moves by...</option>
           <option value="accuracy" selected>accuracy</option>
@@ -156,18 +118,18 @@
       <div id="query-info" class="move-list"></div>
     </div>
     <div id="history" class="move-list-container">
+      <div class="form-container">
+        <button id="pgn">Copy PGN</button>
+      </div>
       <div id="move-list" class="move-list"></div>
     </div>
   </div>
   <div id="metadata-container">
     <h2 id="eval" class="metadata"></h2>
-    <a id="lichess-analysis" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
-    masters DB<input type="checkbox" id="masters" class="metadata">
+    <a id="lichess" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
+    masters<input type="checkbox" id="masters" class="metadata">
     <p id="status-display" class="metadata"></p>
   </div>
-  <footer>
-    <p>Created by Alexander Davison | Powered by <a href="https://www.chessdb.cn/queryc_en/">CDB</a>, <a href="https://chessboardjs.com/">chessboard.js</a>, <a href="https://github.com/jhlywa/chess.js">chess.js</a></p>
-  </footer>
   <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js" integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous"></script>
