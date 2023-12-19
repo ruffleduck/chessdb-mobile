@@ -1,11 +1,12 @@
 $(() => {
   const $board = $("#board");
   const $eval = $("#eval");
-  const $lichessAnalysis = $("#lichess-analysis");
+  const $lichess = $("#lichess");
+  const $masters = $("#masters");
   const $moveList = $("#move-list");
+  const $pgn = $("#pgn");
   const $queryInfo = $("#query-info");
   const $statusDisplay = $("#status-display");
-  const $masters = $("#masters");
   const $whiteSortOptions = $("#white-sort-options");
   const $blackSortOptions = $("#black-sort-options");
 
@@ -74,7 +75,7 @@ $(() => {
       }
       $moveList.scrollTop($moveList.prop("scrollHeight"));
 
-      $lichessAnalysis.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
+      $lichess.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
 
       try {
         queryInfo = await fetchChessDbData();
@@ -204,7 +205,11 @@ $(() => {
     };
   });
 
+  $($pgn).on("click", () => {
+    navigator.clipboard.writeText(game.pgn());
+  });
+
   $eval.text("eval: +0.00");
-  $lichessAnalysis.text("lichess analysis");
+  $lichess.text("lichess");
   onBoardUpdate();
 });
