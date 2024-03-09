@@ -4,36 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Signika+Negative:400,700">
   <title>Opening Library</title>
   <style>
     * {
       box-sizing: border-box;
-      font-family: "Signika Negative", sans-serif;
+      font-family: monospace;
     }
 
     body {
       background-color: #fff;
       color: #000;
+      font-size: 1em;
       margin: 0;
       padding: 0;
     }
 
-    h1 {
-      font-size: 3vw;
-      font-style: italic;
-      margin: 0.5vw;
-    }
-
-    #container {
-      display: flex;
-    }
-
     #board {
-      width: 40%;
+      width: 40vw;
       touch-action: none;
       box-sizing: content-box;
-      margin-left: 0.5vw;
+      margin: 2vw;
     }
 
     .white-1e1d7 {
@@ -50,13 +40,12 @@
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      max-height: 40vw;
+      max-height: 50vw;
     }
 
     .move-list {
-      width: 25vw;
-      font-size: 1.5vw;
-      padding-left: 0.7vw;
+      width: 95vw;
+      padding-left: 2vw;
       overflow-y: auto;
     }
 
@@ -65,14 +54,10 @@
     }
 
     .form-container {
-      display: flex;
-      margin-top: 5px;
-    }
-
-    .form-container select button {
-      margin: 0.5vw;
-      padding: 0;
-      font-size: 1vw;
+      margin-top: 2px;
+      white-space: nowrap;
+      display: inline-block;
+      margin-right: 2vw;
     }
 
     #queryinfo {
@@ -80,56 +65,50 @@
     }
 
     #metadata-container {
-      flex: 1;
       white-space: nowrap;
-      font-size: 1.3vw;
-      margin-left: 0.5vw;
-    }
-
-    #eval {
-      font-size: 2vw;
+      margin-left: 2vw;
     }
 
     .metadata {
       display: inline-block;
       margin-right: 1vw;
     }
+
+    @media only screen and (max-width: 600px) {
+      #board {
+        width: 95vw;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Opening Library</h1>
-  <div id="container">
-    <div id="board"></div>
-    <div id="query-info-container" class="move-list-container">
-      <div class="form-container">
-        <select id="white-sort-options">
-          <option value="" disabled>Sort White's moves by...</option>
-          <option value="accuracy" selected>accuracy</option>
-          <option value="popularity">popularity</option>
-          <option value="winrate">winrate</option>
-        </select>
-        <select id="black-sort-options">
-          <option value="" disabled>Sort Black's moves by...</option>
-          <option value="accuracy" selected>accuracy</option>
-          <option value="popularity">popularity</option>
-          <option value="winrate">winrate</option>
-        </select>
-      </div>
-      <div id="query-info" class="move-list"></div>
-    </div>
-    <div id="history" class="move-list-container">
-      <div class="form-container">
-        <button id="pgn">Copy PGN</button>
-      </div>
-      <div id="move-list" class="move-list"></div>
+  <div id="board"></div>
+  </div>
+  <div id="query-info-container" class="move-list-container">
+    <div id="query-info" class="move-list"></div>
+    <div class="form-container">
+      <select id="white-sort-options">
+        <option value="" disabled>Sort White's moves by...</option>
+        <option value="accuracy" selected>accuracy</option>
+        <option value="popularity">popularity</option>
+        <option value="winrate">winrate</option>
+      </select>
+      <br>
+      <select id="black-sort-options" style="margin-top: 5px;">
+        <option value="" disabled>Sort Black's moves by...</option>
+        <option value="accuracy" selected>accuracy</option>
+        <option value="popularity">popularity</option>
+        <option value="winrate">winrate</option>
+      </select>
     </div>
   </div>
   <div id="metadata-container">
     <h2 id="eval" class="metadata"></h2>
-    <a id="lichess" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
-    masters<input type="checkbox" id="masters" class="metadata">
     <p id="status-display" class="metadata"></p>
   </div>
+  <a style="margin-left: 2vw" id="lichess" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
+    masters<input type="checkbox" id="masters" class="metadata">
+    <button id="pgn">Copy PGN</button>
   <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js" integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous"></script>
