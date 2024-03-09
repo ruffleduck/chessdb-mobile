@@ -5,6 +5,7 @@ $(() => {
   const $masters = $("#masters");
   const $moveList = $("#move-list");
   const $pgn = $("#pgn");
+  const $goback = $("#go-back");
   const $queryInfo = $("#query-info");
   const $statusDisplay = $("#status-display");
   const $whiteSortOptions = $("#white-sort-options");
@@ -207,6 +208,11 @@ $(() => {
 
   $($pgn).on("click", () => {
     navigator.clipboard.writeText(game.pgn());
+  });
+
+  $($goback).on("click", () => {
+    game.undo();
+    board.position(game.fen());
   });
 
   $eval.text("+0.00");
