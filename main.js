@@ -86,7 +86,7 @@ $(() => {
       $eval.text(convertEval(queryInfo[0]?.score, game.turn()));
 
       let explorerInfo;
-      if($masters.is(":checked"))
+      if(!$masters.is(":checked"))
         explorerInfo = await fetch(`https://explorer.lichess.ovh/masters?fen=${encodeURIComponent(game.fen())}`)
         .then(response => response.json());
       else
