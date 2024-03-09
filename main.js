@@ -83,7 +83,7 @@ $(() => {
         console.error("Error fetching ChessDB data:", error);
       }
 
-      $eval.text("eval: " + convertEval(queryInfo[0]?.score, game.turn()));
+      $eval.text(convertEval(queryInfo[0]?.score, game.turn()));
 
       let explorerInfo;
       if($masters.is(":checked"))
@@ -97,7 +97,7 @@ $(() => {
       let draws = explorerInfo.draws;
       let total = white + draws + explorerInfo.black;
       let winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(1);
-      $statusDisplay.text(isNaN(winrate) ? "n/a" : `${winrate}% winrate, ${formatNumber(total)} games`);
+      $statusDisplay.text(isNaN(winrate) ? "n/a" : `${winrate}%, ${formatNumber(total)}`);
 
       for (let i = 0; i < queryInfo.length; i++) {
         const tempGame = new Chess();
@@ -209,7 +209,7 @@ $(() => {
     navigator.clipboard.writeText(game.pgn());
   });
 
-  $eval.text("eval: +0.00");
+  $eval.text("+0.00");
   $lichess.text("lichess");
   onBoardUpdate();
 });
