@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
-  <title>Opening Library</title>
+  <title>ChessDB Mobile</title>
   <style>
     * {
       box-sizing: border-box;
@@ -73,12 +73,6 @@
       display: inline-block;
       margin-right: 1vw;
     }
-
-    @media only screen and (max-width: 600px) {
-      #board {
-        width: 95vw;
-      }
-    }
   </style>
 </head>
 <body>
@@ -102,7 +96,7 @@
     </div>
   </div>
   <div id="metadata-container">
-    <h2 id="eval" class="metadata"></h2>
+    <button id="go-back"><</button>
     <p id="status-display" class="metadata"></p>
     <a style="margin-left: 2vw" id="lichess" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
     <input type="checkbox" id="masters" class="metadata">
