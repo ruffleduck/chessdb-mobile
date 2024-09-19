@@ -1,221 +1,110 @@
-$(() => {
-  const $board = $("#board");
-  const $eval = $("#eval");
-  const $lichess = $("#lichess");
-  const $masters = $("#masters");
-  const $moveList = $("#move-list");
-  const $pgn = $("#pgn");
-  const $goback = $("#go-back");
-  const $queryInfo = $("#query-info");
-  const $statusDisplay = $("#status-display");
-  const $whiteSortOptions = $("#white-sort-options");
-  const $blackSortOptions = $("#black-sort-options");
-
-  const game = new Chess();
-  let queryInfo;
-  let sortedQueryInfo;
-  let isUpdatingBoard = false;
-
-  function convertEval(e, turn) {
-    if (isNaN(e)) return "unknown";
-    let evaluation = e / 100;
-    if (turn === "b") evaluation *= -1;
-    return ((evaluation < 0) ? "" : "+") + evaluation.toFixed(2);
-  }
-
-  function formatNumber(num) {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + "M";
-    } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "K";
-    } else {
-      return num.toString();
-    }
-  }
-
-  async function fetchChessDbData() {
-    $statusDisplay.text("Requesting...");
-    const response = await fetch(`https://www.chessdb.cn/cdb.php?action=queryall&board=${encodeURIComponent(game.fen())}`);
-    const moves = await response.text();
-
-    const uniqueMoves = new Set();
-    const movesData = [];
-
-    moves.split("|").forEach(move => {
-      const moveStartIndex = move.indexOf("move:") + 5;
-      const moveEndIndex = move.indexOf(",", moveStartIndex);
-      const moveStr = move.substring(moveStartIndex, moveEndIndex);
-
-      if (!uniqueMoves.has(moveStr)) {
-        uniqueMoves.add(moveStr);
-
-        let moveInfo = { move: moveStr };
-        move.substring(moveEndIndex + 1).split(",").forEach(item => {
-          const [key, value] = item.split(":");
-          moveInfo[key] = key === "note" ? value.trim() : parseInt(value, 10);
-        });
-        movesData.push(moveInfo);
-      }
-    });
-
-    return movesData;
-  }
-
-  async function onBoardUpdate() {
-    if (isUpdatingBoard) {
-      return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
+  <title>ChessDB Mobile</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: monospace;
     }
 
-    isUpdatingBoard = true;
-
-    try {
-      $moveList.text("");
-      const moveHistory = game.history();
-      for (let i = 0; i < moveHistory.length; i += 2) {
-        $moveList.append(`<p>${Math.ceil((i + 1) / 2)}. ${moveHistory[i]} ${(i + 1) < moveHistory.length ? moveHistory[i + 1] : ""}</p>`);
-      }
-      $moveList.scrollTop($moveList.prop("scrollHeight"));
-
-      $lichess.attr("href", `https://lichess.org/analysis/fromPosition/${game.fen()}`);
-
-      try {
-        queryInfo = await fetchChessDbData();
-      } catch (error) {
-        console.error("Error fetching ChessDB data:", error);
-      }
-
-      $eval.text(convertEval(queryInfo[0]?.score, game.turn()));
-
-      let explorerInfo;
-      if(!$masters.is(":checked"))
-        explorerInfo = await fetch(`https://explorer.lichess.ovh/masters?fen=${encodeURIComponent(game.fen())}`)
-        .then(response => response.json());
-      else
-        explorerInfo = await fetch(`https://explorer.lichess.ovh/lichess?fen=${encodeURIComponent(game.fen())}&speeds=blitz,rapid&ratings=2000,2200,2500`)
-        .then(response => response.json());
-
-      let white = explorerInfo.white;
-      let draws = explorerInfo.draws;
-      let total = white + draws + explorerInfo.black;
-      let winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(1);
-      $statusDisplay.text(isNaN(winrate) ? "n/a" : `${winrate}%, ${formatNumber(total)}`);
-
-      for (let i = 0; i < queryInfo.length; i++) {
-        const tempGame = new Chess();
-        tempGame.load(game.fen());
-        tempGame.move({ from: queryInfo[i].move.substring(0, 2), to: queryInfo[i].move.substring(2, 4) });
-        const moveSan = tempGame.history()[tempGame.history().length - 1];
-        winrate = NaN;
-        total = NaN;
-        if (moveSan !== undefined) {
-          for (let j = 0; j < explorerInfo.moves.length; j++) {
-            if (explorerInfo.moves[j].san === moveSan) {
-              white = explorerInfo.moves[j].white;
-              draws = explorerInfo.moves[j].draws;
-              total = white + draws + explorerInfo.moves[j].black;
-              winrate = ((white / total + 0.5 * draws / total) * 100).toFixed(1);
-              break;
-            }
-          }
-        }
-        queryInfo[i].total = total;
-        queryInfo[i].winrate = winrate;
-        queryInfo[i].moveSan = moveSan;
-      }
-
-      $queryInfo.text("");
-
-      sortedQueryInfo = queryInfo.map(obj => ({ ...obj }));
-      sortedQueryInfo.sort((a, b) => {
-        let aComparisonValue;
-        let bComparisonValue;
-        switch (game.turn() === "w" ? $whiteSortOptions.val() : $blackSortOptions.val()) {
-          case "accuracy":
-            aComparisonValue = a.score;
-            bComparisonValue = b.score;
-            break;
-          case "popularity":
-            aComparisonValue = a.total;
-            bComparisonValue = b.total;
-            break;
-          case "winrate":
-            aComparisonValue = a.winrate;
-            bComparisonValue = b.winrate;
-            break;
-        }
-        if (isNaN(aComparisonValue) && isNaN(bComparisonValue)) return 1;
-        if (isNaN(aComparisonValue)) return 1;
-        if (isNaN(bComparisonValue)) return -1;
-        if (aComparisonValue === bComparisonValue) return b.total - a.total;
-        if (game.turn() === "b" && $blackSortOptions.val() === "winrate") return aComparisonValue - bComparisonValue;
-        return bComparisonValue - aComparisonValue;
-      });
-
-      for (let i = 0; i < sortedQueryInfo.length; i++) {
-        if (sortedQueryInfo[i].moveSan === undefined) continue;
-        $queryInfo.append(`<p>${sortedQueryInfo[i].moveSan}${sortedQueryInfo[i].note[0]}
-            (${convertEval(sortedQueryInfo[i].score, game.turn())},
-            ${isNaN(sortedQueryInfo[i].winrate) ? "n/a" : `${sortedQueryInfo[i].winrate}%, `}${isNaN(sortedQueryInfo[i].total) ? "" : `${formatNumber(sortedQueryInfo[i].total)}`})</p>`);
-      }
-    } finally {
-      isUpdatingBoard = false;
-    }
-  }
-
-  const board = Chessboard("board", {
-    draggable: true,
-    showNotation: false,
-    position: "start",
-    moveSpeed: 15,
-    snapbackSpeed: 0,
-    snapSpeed: 0,
-    onDrop: async function (source, target) {
-      if (game.move({ from: source, to: target, promotion: "q" }) === null) return "snapback";
-      await onBoardUpdate();
-    },
-    onSnapEnd: () => {
-      board.position(game.fen());
-    }
-  });
-  $(window).resize(board.resize);
-
-  $(document).keydown(event => {
-    if (isUpdatingBoard) {
-      return;
+    body {
+      background-color: #000;
+      color: #fff;
+      font-size: 0.8em;
+      margin: 0;
+      padding: 0;
     }
 
-    setTimeout(() => {
-      if (event.which === 37) {
-        game.undo();
-        board.position(game.fen());
-      } else if (event.key === "f") {
-        board.flip();
-      } else if (event.which === 39) {
-        if (sortedQueryInfo[0] !== undefined) {
-          game.move({ from: sortedQueryInfo[0].move.substring(0, 2), to: sortedQueryInfo[0].move.substring(2, 4) });
-          board.position(game.fen());
-          onBoardUpdate();
-        }
-      }
-    }, 0);
-  });
+    #board {
+      width: 95vw;
+      touch-action: none;
+      box-sizing: content-box;
+      margin: 2vw;
+    }
 
-  $(document).keyup(event => {
-    if (event.which === 37) {
-      onBoardUpdate();
-    };
-  });
+    .white-1e1d7 {
+      background-color: #064;
+    }
 
-  $($pgn).on("click", () => {
-    navigator.clipboard.writeText(game.pgn());
-  });
+    .black-3c85d {
+      background-color: #bbb;
+    }
 
-  $($goback).on("click", () => {
-    game.undo();
-    board.position(game.fen());
-  });
+    .move-list-container {
+      flex: 1;
+      margin-left: 2vw;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      max-height: 30vw;
+    }
 
-  $eval.text("+0.00");
-  $lichess.text("lichess");
-  onBoardUpdate();
-});
+    .move-list {
+      width: 95vw;
+      padding-left: 2vw;
+      overflow-y: auto;
+    }
+
+    #query-info-container {
+      border-right: 1px solid #000;
+    }
+
+    .form-container {
+      margin-top: 2px;
+      white-space: nowrap;
+      display: inline-block;
+      margin-right: 2vw;
+    }
+
+    #queryinfo {
+      text-align: center;
+    }
+
+    #metadata-container {
+      white-space: nowrap;
+      margin-left: 2vw;
+    }
+
+    .metadata {
+      display: inline-block;
+      margin-right: 1vw;
+    }
+  </style>
+</head>
+<body>
+  <div id="board"></div>
+  </div>
+  <div id="query-info-container" class="move-list-container">
+    <div id="query-info" class="move-list"></div>
+    <div class="form-container">
+      <select id="white-sort-options" style="width: 40vw;">
+        <option value="" disabled>Sort White's moves by...</option>
+        <option value="accuracy" selected>accuracy</option>
+        <option value="popularity">popularity</option>
+        <option value="winrate">winrate</option>
+      </select>
+      <select id="black-sort-options" style="width: 40vw;">
+        <option value="" disabled>Sort Black's moves by...</option>
+        <option value="accuracy" selected>accuracy</option>
+        <option value="popularity">popularity</option>
+        <option value="winrate">winrate</option>
+      </select>
+    </div>
+  </div>
+  <div id="metadata-container">
+    <button id="go-back"><</button>
+    <p id="status-display" class="metadata"></p>
+    <a style="margin-left: 2vw" id="lichess" class="metadata" target="_blank" href="https://lichess.org/analysis/fromPosition/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"></a>
+    <input type="checkbox" id="masters" class="metadata">
+    <button id="pgn">Copy PGN</button>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js" integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous"></script>
+  <script src="main.js"></script>
+</body>
+</html>
